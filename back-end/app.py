@@ -1,8 +1,11 @@
 import json
 import networkx as nx
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,render_template
+from flask_cors import CORS
+
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Load the JSON data
 with open("map.json", 'r') as file:
@@ -15,10 +18,18 @@ edges = building_data["edges"]
 
 # Initialize an empty graph
 G = nx.Graph()
+flat_nodes = []
 
 # Add nodes to the graph
 for node_name, node_data in nodes.items():
-    G.add_node(node_name, **node_data)
+    if isinstance(node_data.get("type"),list):
+        for gate in node_data["type"]:
+            gate_name = f"{node_name} - {gate}"
+            G.add_node(gate_name,**node_data)
+            flat_nodes.append(gate_name)
+        else:
+            G.add_node(node_name,**node_data)
+            flat_nodes.append(node_name)
 
 # Add edges to the graph, considering if the path is accessible
 for edge in edges:
@@ -47,7 +58,7 @@ def find_shortest_path():
 @app.route('/get-nodes', methods=['GET'])
 def get_nodes():
     # Return all node names as a list
-    return jsonify({"nodes": list(nodes.keys())})
+    return jsonify({"nodes": flat_nodes})
 
 
 if __name__ == '__main__':

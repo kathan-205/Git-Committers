@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accessible Route Finder</title>
+</head>
+<body>
+    <h1>Find Accessible Routes</h1>
+    <form id="path-form">
+        <label for="start-node">Start:</label>
+        <select id="start-node" required>
+            <option value="" disabled selected>Select start node</option>
+        </select>
+
+        <label for="end-node">End:</label>
+        <select id="end-node" required>
+            <option value="" disabled selected>Select end node</option>
+        </select>
+
+        <button type="submit">Find Path</button>
+    </form>
+
+    <h3>Shortest Path:</h3>
+    <ul id="path-result"></ul>
+
+    <script>
+        // Populate Dropdowns with Available Nodes
+        async function populateDropdowns() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/get-nodes');
+                const data = await response.json();
+
+                const startNodeSelect = document.getElementById('start-node');
+                const endNodeSelect = document.getElementById('end-node');
+
+                // Clear any existing options (except the first default option)
+                startNodeSelect.innerHTML = '<option value="" disabled selected>Select start node</option>';
+                endNodeSelect.innerHTML = '<option value="" disabled selected>Select end node</option>';
+
+                // Populate both dropdowns
+                data.nodes.forEach(node => {
+                    const startOption = document.createElement('option');
+                    startOption.value = node;
+                    startOption.text = node;
+                    startNodeSelect.add(startOption);
+
+                    const endOption = document.createElement('option');
+                    endOption.value = node;
+                    endOption.text = node;
+                    endNodeSelect.add(endOption);
+                });
+            } catch (error) {
+                console.error('Error fetching nodes:', error);
+            }
+        }
+
+        // Handle Form Submission
+        document.getElementById('path-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const startNode = document.getElementById('start-node').value;
+            const endNode = document.getElementById('end-node').value;
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/find-shortest-path', {
+
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ start_node: startNode, end_node: endNode })
+                });
+                
+                const data = await response.json();
+                const resultList = document.getElementById('path-result');
+                resultList.innerHTML = '';
+
+                if (data.shortest_path) {
+                    data.shortest_path.forEach(node => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = node;
+                        resultList.appendChild(listItem);
+                    });
+                } else if (data.error) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = data.error;
+                    resultList.appendChild(listItem);
+                }
+            } catch (error) {
+                console.error('Error finding path:', error);
+            }
+        });
+
+        // Load nodes when the page loads
+        window.addEventListener('load', populateDropdowns);
+    </script>
+</body>
+</html>
