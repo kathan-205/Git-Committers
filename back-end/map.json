@@ -1,4 +1,4 @@
-import json
+
 {
     "nodes": {
       "Entrance": {"type": "entrance", "floor": 1},
@@ -32,23 +32,23 @@ import json
     },
   
     "edges": [
-      {"from": "Entrance", "to": "Lobby", "accessible": True},
-      {"from": "Lobby", "to": "Elevator1", "accessible": True},
-      {"from": "Lobby", "to": "Stairs", "accessible": False},
-      {"from": "Elevator1", "to": "E1-003 Lec", "accessible": True},
-      {"from": "Lobby", "to": "E1-001 Lec", "accessible": True},
-      {"from": "E1-001 Lec", "to": "E1-001 Lec gate 1", "accessible": True},
-      {"from": "E1-001 Lec", "to": "E1-001 Lec gate 2", "accessible": True},
-      {"from": "E1-001 Lec", "to": "E1-001 Lec gate 3", "accessible": True},
-      {"from": "E1-001 Lec", "to": "E1-001 Lec gate 4", "accessible": True},
+      {"from": "Entrance", "to": "Lobby", "accessible": true},
+      {"from": "Lobby", "to": "Elevator1", "accessible": true},
+      {"from": "Lobby", "to": "Stairs", "accessible": true},
+      {"from": "Elevator1", "to": "E1-003 Lec", "accessible": true},
+      {"from": "Lobby", "to": "E1-001 Lec", "accessible": true},
+      {"from": "E1-001 Lec", "to": "E1-001 Lec gate 1", "accessible": true},
+      {"from": "E1-001 Lec", "to": "E1-001 Lec gate 2", "accessible": true},
+      {"from": "E1-001 Lec", "to": "E1-001 Lec gate 3", "accessible": true},
+      {"from": "E1-001 Lec", "to": "E1-001 Lec gate 4", "accessible": true},
       
-      {"from": "Elevator1", "to": "Lobby2", "accessible": True},
-      {"from": "Lobby2", "to": "Elevator2", "accessible": True},
-      {"from": "Lobby2", "to": "Elevator3", "accessible": True},
-      {"from": "Lobby2", "to": "Elevator4", "accessible": True},
-      {"from": "Lobby2", "to": "Pedway", "accessible": True},
+      {"from": "Elevator1", "to": "Lobby2", "accessible": true},
+      {"from": "Lobby2", "to": "Elevator2", "accessible": true},
+      {"from": "Lobby2", "to": "Elevator3", "accessible": true},
+      {"from": "Lobby2", "to": "Elevator4", "accessible": true},
+      {"from": "Lobby2", "to": "Pedway", "accessible": true},
   
-      {"from": "Pedway", "to": "Mechanical Engineering Building", "accessible": True}
+      {"from": "Pedway", "to": "Mechanical Engineering Building", "accessible": true}
     ]
   }
   
