@@ -44,6 +44,10 @@ def find_shortest_path():
         return jsonify({"error": f"No path found between {start_node} and {end_node}"}), 404
     except nx.NodeNotFound as e:
         return jsonify({"error": str(e)}), 400
+@app.route('/get-nodes', methods=['GET'])
+def get_nodes():
+    # Return all node names as a list
+    return jsonify({"nodes": list(nodes.keys())})
 
 
 if __name__ == '__main__':

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shortest Path Finder with Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        input {
+            padding: 10px;
+            margin: 10px 0;
+            width: 300px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Find Shortest Path with Map</h1>
+
+    <label for="start-node">Start Node: </label>
+    <input type="text" id="start-node" placeholder="Enter start node" required><br><br>
+
+    <label for="end-node">End Node: </label>
+    <input type="text" id="end-node" placeholder="Enter end node" required><br><br>
+
+    <button id="find-path-btn">Find Path</button>
+
+    <p id="result"></p>
+
+    <!-- Map container -->
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Initialize the Leaflet map
+        const map = L.map('map').setView([51.505, -0.09], 13);  // Set default coordinates (can be changed)
+
+        // Add a tile layer (can change style or provider)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Function to show the shortest path on the map
+        function showShortestPath(path) {
+            if (path.length === 0) {
+                document.getElementById('result').innerText = 'No path found.';
+                return;
+            }
+
+            // Clear previous path if any
+            if (window.pathLayer) {
+                map.removeLayer(window.pathLayer);
+            }
+
+            // Create a new polyline for the shortest path
+            const latLngs = path.map(node => {
+                // Example coordinates, replace with actual coordinates from your nodes
+                const coordinates = {
+                    "Entrance": [51.505, -0.09],
+                    "E1-003 Lec": [51.515, -0.1],
+                    // Add other nodes' coordinates
+                };
+                return coordinates[node];
+            });
+
+            window.pathLayer = L.polyline(latLngs, {color: 'blue'}).addTo(map);
+            map.fitBounds(window.pathLayer.getBounds());  // Zoom map to the path's bounds
+        }
+
+        // Handle form submission
+        document.getElementById('find-path-btn').addEventListener('click', async function() {
+            const startNode = document.getElementById('start-node').value;
+            const endNode = document.getElementById('end-node').value;
+
+            // Ensure both fields are filled
+            if (!startNode || !endNode) {
+                document.getElementById('result').innerText = 'Please provide both start and end nodes.';
+                return;
+            }
+
+            // Send a POST request to the backend to find the shortest path
+            const data = {
+                start_node: startNode,
+                end_node: endNode
+            };
+
+            try {
+                const response = await fetch('/find-shortest-path', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                const result = await response.json();
+
+                if (result.shortest_path) {
+                    document.getElementById('result').innerText = 'Shortest Path: ' + result.shortest_path.join(' -> ');
+                    showShortestPath(result.shortest_path);  // Show path on the map
+                } else {
+                    document.getElementById('result').innerText = 'Error: ' + result.error;
+                }
+            } catch (error) {
+                document.getElementById('result').innerText = 'Error: ' + error.message;
+            }
+        });
+    </script>
+</body>
+</html>
