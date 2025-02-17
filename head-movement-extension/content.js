@@ -65,7 +65,9 @@ function startVideo() {
       video.style.zIndex = '9999';
       video.style.border = '2px solid black';
       video.srcObject = stream;
-      video.autoplay = true;
+      video.autoplay = true;video.style.transform = 'scaleX(-1)';  // Mirror the video horizontally
+      video.style.transformOrigin = 'center';  // Keep the video centered after mirroring
+
 
       document.body.appendChild(video);
 
