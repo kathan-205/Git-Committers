@@ -1,0 +1,24 @@
+{
+    "manifest_version": 3,
+    "name": "ClearView",
+    "version": "1.0",
+    "description": "AR-based real-time captioning for deaf and hard-of-hearing users.",
+    "permissions": ["activeTab"],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_popup": "popup.html"
+    },
+    "content_scripts": [
+      {
+        "matches": ["<all_urls>"],
+        "js": ["content.js"]
+      }
+    ],
+    "host_permissions": [
+      "http://*/*",
+      "https://*/*"
+    ]
+  }
+  
