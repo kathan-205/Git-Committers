@@ -69,7 +69,7 @@ let previousNoseX = null;
 const moveThresholdX = 40;  // Left/Right movement threshold
 const moveThresholdY = 25;  // Up/Down movement threshold
 const deadzoneY = 8;        // Deadzone to prevent small movements triggering
-const cooldownTime = 1500;  // 1.5 seconds cooldown
+const cooldownTime = 5000;  // 1.5 seconds cooldown
 let canDetectMovement = true;
 
 // Detect faces and recognize movement
@@ -96,13 +96,17 @@ async function detectFaces(video) {
 
     if (canDetectMovement) {
       if (Math.abs(movementX) > moveThresholdX) {
-        triggerAction(movementX > 0 ? "right" : "left");
+        const direction = movementX > 0 ? "right" : "left";
+        alert(`📢 Moving ${direction.toUpperCase()}!`);
+        triggerAction(direction);
       }
 
       if (Math.abs(movementY) > moveThresholdY) {
         if (movementY > deadzoneY) {
+          alert("📢 Moving DOWN!");
           triggerAction("down");
         } else if (movementY < -deadzoneY) {
+          alert("📢 Moving UP!");
           triggerAction("up");
         }
       }
@@ -119,18 +123,12 @@ function isPDF() {
          window.location.href.startsWith("chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/");
 }
 
-// Scroll PDF viewer using keyboard simulation
-function scrollPDF(direction) {
-  console.log(`📜 Scrolling PDF ${direction}`);
-  const event = new KeyboardEvent("keydown", {
-    key: direction === "up" ? "ArrowUp" : "ArrowDown",
-    code: direction === "up" ? "ArrowUp" : "ArrowDown",
-    keyCode: direction === "up" ? 38 : 40,
-    which: direction === "up" ? 38 : 40,
-    bubbles: true,
-    cancelable: true
-  });
-  document.dispatchEvent(event);
+// Inject a script to control scrolling in PDFs
+function injectScrollScript(direction) {
+  const script = document.createElement("script");
+  script.textContent = `window.scrollBy({ top: ${direction === "up" ? "-300" : "300"}, behavior: "smooth" });`;
+  document.documentElement.appendChild(script);
+  script.remove();
 }
 
 // Function to trigger scrolling
@@ -143,7 +141,7 @@ function triggerAction(direction) {
   }, cooldownTime);
 
   if (isPDF()) {
-    scrollPDF(direction);
+    injectScrollScript(direction);
     return;
   }
 
