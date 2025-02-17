@@ -33,13 +33,19 @@ async function loadModels() {
       return;
     }
 
-    // Load models
+    console.log("Loading models from:", MODEL_URL);
+
+    // Load models and add logs to check status
     await Promise.all([
-      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL).then(() => {
+        console.log("ssdMobilenetv1 model loaded!");
+      }),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL).then(() => {
+        console.log("faceLandmark68Net model loaded!");
+      })
     ]);
 
-    console.log("Models loaded!");
+    console.log("All models loaded successfully!");
     startVideo();
   } catch (error) {
     console.error("Error loading models:", error);
@@ -54,7 +60,8 @@ function startVideo() {
       video.style.position = 'fixed';
       video.style.top = '10px';
       video.style.right = '10px';
-      video.style.width = '200px';
+      video.style.width = '200px';  // Set width explicitly
+      video.style.height = 'auto';  // Set height to auto to maintain aspect ratio
       video.style.zIndex = '9999';
       video.style.border = '2px solid black';
       video.srcObject = stream;
@@ -62,17 +69,24 @@ function startVideo() {
 
       document.body.appendChild(video);
 
-      video.addEventListener('playing', () => {
-        console.log("Video is playing!");
-        detectFaces(video);
-      });
+      // Wait for video metadata to load (including width and height)
+      video.onloadedmetadata = () => {
+        console.log("Video metadata loaded:", video.videoWidth, video.videoHeight);
+
+        // Ensure video has valid dimensions before calling faceapi functions
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          detectFaces(video);
+        } else {
+          console.error("Invalid video dimensions:", video.videoWidth, video.videoHeight);
+        }
+      };
     })
     .catch((err) => {
       console.error("Error accessing webcam: ", err);
     });
 }
 
-// Detect faces in the video stream
+// Detect faces in the video stream and log face detection status
 async function detectFaces(video) {
   const canvas = faceapi.createCanvasFromMedia(video);
   canvas.style.position = 'fixed';
@@ -81,16 +95,27 @@ async function detectFaces(video) {
   canvas.style.zIndex = '9999';
   document.body.appendChild(canvas);
 
-  const displaySize = { width: video.width, height: video.height };
+  // Ensure canvas size matches the video size after metadata is loaded
+  const displaySize = { width: video.videoWidth, height: video.videoHeight };
   faceapi.matchDimensions(canvas, displaySize);
 
   setInterval(async () => {
-    const detections = await faceapi.detectAllFaces(video).withFaceLandmarks();
-    const resizedDetections = faceapi.resizeResults(detections, displaySize);
+    // Ensure canvas and video dimensions are valid before processing
+    if (displaySize.width > 0 && displaySize.height > 0) {
+      const detections = await faceapi.detectAllFaces(video).withFaceLandmarks();
+      const resizedDetections = faceapi.resizeResults(detections, displaySize);
 
-    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-    faceapi.draw.drawDetections(canvas, resizedDetections);
-    faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+      canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+      faceapi.draw.drawDetections(canvas, resizedDetections);
+      faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+
+      // Log number of faces detected
+      console.log("Number of faces detected:", detections.length);
+
+      if (detections.length > 0) {
+        console.log("Face detected! Landmarks:", detections[0].landmarks);
+      }
+    }
   }, 100);
 }
 
