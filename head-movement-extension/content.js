@@ -99,16 +99,13 @@ async function detectFaces(video) {
 
     if (canDetectMovement) {
       if (Math.abs(movementX) > moveThresholdX) {
-        alert(`Detected Horizontal Movement: ${movementX > 0 ? "right" : "left"}`);
         triggerAction(movementX > 0 ? "right" : "left");
       }
 
       if (Math.abs(movementY) > moveThresholdY) {
         if (movementY > deadzoneY) {
-          alert("Detected Downward Movement");
           triggerAction("down");
         } else if (movementY < -deadzoneY) {
-          alert("Detected Upward Movement");
           triggerAction("up");
         }
       }
@@ -118,7 +115,7 @@ async function detectFaces(video) {
   }, 200);
 }
 
-// Trigger keyboard events for navigation
+// Trigger browser navigation or scroll actions
 function triggerAction(direction) {
   console.log(`Triggered Action: ${direction}`);
 
@@ -128,17 +125,16 @@ function triggerAction(direction) {
     canDetectMovement = true;
   }, 800); // Adjust cooldown as needed
 
-  const scrollAmount = 500;
-
-  // Scroll logic for different directions
   if (direction === "right") {
-    window.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    console.log("Navigating Forward");
+    window.history.forward(); // Move forward in history
   } else if (direction === "left") {
-    window.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+    console.log("Navigating Back");
+    window.history.back(); // Move back in history
   } else if (direction === "up") {
-    window.scrollBy({ top: -scrollAmount, behavior: "smooth" });
+    window.scrollBy({ top: -500, behavior: "smooth" });
   } else if (direction === "down") {
-    window.scrollBy({ top: scrollAmount, behavior: "smooth" });
+    window.scrollBy({ top: 500, behavior: "smooth" });
   }
 }
 
