@@ -87,6 +87,8 @@ function startVideo() {
 }
 
 // Detect faces in the video stream and log face detection status
+let previousPosition = null; // Variable to store previous nose position
+
 async function detectFaces(video) {
   const canvas = faceapi.createCanvasFromMedia(video);
   canvas.style.position = 'fixed';
@@ -113,7 +115,25 @@ async function detectFaces(video) {
       console.log("Number of faces detected:", detections.length);
 
       if (detections.length > 0) {
-        console.log("Face detected! Landmarks:", detections[0].landmarks);
+        const landmarks = detections[0].landmarks;
+        const nose = landmarks.getNose();  // Get nose landmark
+        const centerX = nose[3].x;  // Using the x-coordinate of the nose (or any other point)
+
+        console.log("Current X Position of the nose:", centerX);
+
+        // You can check for movement by comparing this position with the previous one
+        if (previousPosition !== null) {
+          const movementThreshold = 10; // Change threshold as needed
+
+          // Right movement detection
+          if (centerX > previousPosition + movementThreshold) {
+            console.log("Rightward movement detected!");
+            alert("Rightward movement detected!");  // Optional visual alert
+          }
+        }
+
+        // Update the previous position
+        previousPosition = centerX;
       }
     }
   }, 100);
