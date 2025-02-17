@@ -25,75 +25,97 @@
     <ul id="path-result"></ul>
 
     <script>
-        // Populate Dropdowns with Available Nodes
-        async function populateDropdowns() {
+        let graph = {}; // Store the graph from map.json
+
+        // Load and populate nodes from map.json
+        async function loadNodes() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/get-nodes');
+                const response = await fetch("map.json"); // Load local file
                 const data = await response.json();
+                graph = data; // Store for pathfinding
 
-                const startNodeSelect = document.getElementById('start-node');
-                const endNodeSelect = document.getElementById('end-node');
+                const startNodeSelect = document.getElementById("start-node");
+                const endNodeSelect = document.getElementById("end-node");
 
-                // Clear any existing options (except the first default option)
-                startNodeSelect.innerHTML = '<option value="" disabled selected>Select start node</option>';
-                endNodeSelect.innerHTML = '<option value="" disabled selected>Select end node</option>';
-
-                // Populate both dropdowns
-                data.nodes.forEach(node => {
-                    const startOption = document.createElement('option');
-                    startOption.value = node;
-                    startOption.text = node;
-                    startNodeSelect.add(startOption);
-
-                    const endOption = document.createElement('option');
-                    endOption.value = node;
-                    endOption.text = node;
-                    endNodeSelect.add(endOption);
+                // Populate dropdowns with node names
+                Object.keys(graph).forEach(node => {
+                    const option1 = new Option(node, node);
+                    const option2 = new Option(node, node);
+                    startNodeSelect.add(option1);
+                    endNodeSelect.add(option2);
                 });
             } catch (error) {
-                console.error('Error fetching nodes:', error);
+                console.error("Error loading nodes:", error);
             }
         }
 
-        // Handle Form Submission
-        document.getElementById('path-form').addEventListener('submit', async function(event) {
+        // Dijkstra's Algorithm for shortest path
+        function findShortestPath(start, end) {
+            let distances = {};
+            let prev = {};
+            let unvisited = new Set(Object.keys(graph));
+
+            // Initialize distances
+            for (let node of unvisited) {
+                distances[node] = Infinity;
+            }
+            distances[start] = 0;
+
+            while (unvisited.size > 0) {
+                let current = [...unvisited].reduce((minNode, node) =>
+                    distances[node] < distances[minNode] ? node : minNode
+                );
+
+                unvisited.delete(current);
+
+                if (current === end) {
+                    let path = [];
+                    while (prev[current]) {
+                        path.unshift(current);
+                        current = prev[current];
+                    }
+                    path.unshift(start);
+                    return path;
+                }
+
+                if (distances[current] === Infinity) break;
+
+                for (let [neighbor, weight] of Object.entries(graph[current])) {
+                    let alt = distances[current] + weight;
+                    if (alt < distances[neighbor]) {
+                        distances[neighbor] = alt;
+                        prev[neighbor] = current;
+                    }
+                }
+            }
+            return null; // No path found
+        }
+
+        // Handle form submission
+        document.getElementById("path-form").addEventListener("submit", function(event) {
             event.preventDefault();
 
-            const startNode = document.getElementById('start-node').value;
-            const endNode = document.getElementById('end-node').value;
+            const startNode = document.getElementById("start-node").value;
+            const endNode = document.getElementById("end-node").value;
+            const resultList = document.getElementById("path-result");
+            resultList.innerHTML = "";
 
-            try {
-                const response = await fetch('http://127.0.0.1:5000/find-shortest-path', {
-
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ start_node: startNode, end_node: endNode })
-                });
-                
-                const data = await response.json();
-                const resultList = document.getElementById('path-result');
-                resultList.innerHTML = '';
-
-                if (data.shortest_path) {
-                    data.shortest_path.forEach(node => {
-                        const listItem = document.createElement('li');
+            if (startNode && endNode) {
+                const path = findShortestPath(startNode, endNode);
+                if (path) {
+                    path.forEach(node => {
+                        const listItem = document.createElement("li");
                         listItem.textContent = node;
                         resultList.appendChild(listItem);
                     });
-                } else if (data.error) {
-                    const listItem = document.createElement('li');
-                    listItem.textContent = data.error;
-                    resultList.appendChild(listItem);
+                } else {
+                    resultList.innerHTML = "<li>No path found.</li>";
                 }
-            } catch (error) {
-                console.error('Error finding path:', error);
             }
         });
 
-        // Load nodes when the page loads
-        window.addEventListener('load', populateDropdowns);
+        // Load nodes on page load
+        window.addEventListener("load", loadNodes);
     </script>
 </body>
 </html>
