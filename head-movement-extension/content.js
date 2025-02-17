@@ -1,157 +1,163 @@
-console.log("Content script is running!");
+console.log("✅ Content script is running!");
 
-// Load the face-api.min.js script dynamically
+// Load face-api.min.js dynamically
 function loadFaceApi() {
-  const script = document.createElement('script');
-  script.src = chrome.runtime.getURL('face_api.min.js'); // Ensure correct path
+  const script = document.createElement("script");
+  script.src = chrome.runtime.getURL("face_api.min.js");
   script.onload = () => {
-    console.log("face-api.min.js loaded!");
+    console.log("✅ face-api.min.js loaded!");
     if (window.faceapi) {
-      console.log("faceapi is now defined:", window.faceapi);
+      console.log("✅ faceapi is now defined.");
       loadModels();
     } else {
-      console.error("faceapi is still not defined");
+      console.error("❌ faceapi is not defined!");
     }
   };
-  script.onerror = (err) => {
-    console.error("Error loading face-api.min.js:", err);
-  };
-
+  script.onerror = (err) => console.error("❌ Error loading face-api.min.js:", err);
   document.head.appendChild(script);
 }
 
-// Load face-api.js models
+// Load models from the extension directory
 async function loadModels() {
   try {
-    const MODEL_URL = chrome.runtime.getURL('models'); // Path to models folder
+    const MODEL_URL = chrome.runtime.getURL("models");
     if (!window.faceapi) {
-      console.error("faceapi is not defined!");
+      console.error("❌ faceapi is not defined!");
       return;
     }
 
-    console.log("Loading models from:", MODEL_URL);
-
+    console.log("🟡 Loading models from:", MODEL_URL);
     await Promise.all([
       faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
     ]);
-
-    console.log("All models loaded successfully!");
+    console.log("✅ All models loaded successfully!");
     startVideo();
   } catch (error) {
-    console.error("Error loading models:", error);
+    console.error("❌ Error loading models:", error);
   }
 }
 
 // Start webcam and display video on screen
 function startVideo() {
   navigator.mediaDevices.getUserMedia({ video: true })
-    .then(function (stream) {
-      const video = document.createElement('video');
-      video.style.position = 'fixed';
-      video.style.top = '10px';
-      video.style.right = '10px';
-      video.style.width = '200px';
-      video.style.height = 'auto';
-      video.style.zIndex = '9999';
-      video.style.border = '2px solid black';
+    .then((stream) => {
+      const video = document.createElement("video");
+      video.style.position = "fixed";
+      video.style.top = "10px";
+      video.style.right = "10px";
+      video.style.width = "200px";
+      video.style.height = "auto";
+      video.style.zIndex = "9999";
+      video.style.border = "2px solid black";
+      video.style.transform = "scaleX(-1)"; // Mirror effect
       video.srcObject = stream;
       video.autoplay = true;
-      video.style.transform = 'scaleX(-1)';  // Mirror the video horizontally
-      video.style.transformOrigin = 'center';  // Keep the video centered after mirroring
-
       document.body.appendChild(video);
 
       video.onloadedmetadata = () => {
-        console.log("Video metadata loaded:", video.videoWidth, video.videoHeight);
-
-        if (video.videoWidth > 0 && video.videoHeight > 0) {
-          detectFaces(video);
-        } else {
-          console.error("Invalid video dimensions:", video.videoWidth, video.videoHeight);
-        }
+        console.log("✅ Video loaded! Starting face detection...");
+        detectFaces(video);
       };
     })
-    .catch((err) => {
-      console.error("Error accessing webcam: ", err);
-    });
+    .catch((err) => console.error("❌ Error accessing webcam:", err));
 }
 
+// Variables for movement detection
+let initialNoseY = null;
+let previousNoseX = null;
+const moveThresholdX = 40;  // Left/Right movement threshold
+const moveThresholdY = 25;  // Up/Down movement threshold
+const deadzoneY = 8;        // Deadzone to prevent small movements triggering
+const cooldownTime = 1500;  // 1.5 seconds cooldown
+let canDetectMovement = true;
+
 // Detect faces and recognize movement
-let lastMovement = null; // Stores last detected movement ("left" or "right")
-let hasMoved = false; // Prevents multiple detections of the same movement
-const movementThreshold = 40; // Degrees required for detection
-const deadZone = 50; // Ignores small movements below this threshold
-const cooldownTime = 2500; // Cooldown (1.5 seconds) before another movement is detected
-const tiltThreshold = 10; // Threshold for head tilting (small value)
-
 async function detectFaces(video) {
-  const canvas = faceapi.createCanvasFromMedia(video);
-  canvas.style.position = 'fixed';
-  canvas.style.top = video.style.top;
-  canvas.style.right = video.style.right;
-  canvas.style.zIndex = '9999';
-  document.body.appendChild(canvas);
-
-  const displaySize = { width: video.videoWidth, height: video.videoHeight };
-  faceapi.matchDimensions(canvas, displaySize);
-
+  console.log("🟡 Detecting faces...");
   setInterval(async () => {
-    if (displaySize.width > 0 && displaySize.height > 0) {
-      const detections = await faceapi.detectSingleFace(video).withFaceLandmarks();
-      if (!detections) return; // Skip if no face detected
+    const detections = await faceapi.detectSingleFace(video).withFaceLandmarks();
+    if (!detections) return;
 
-      const resizedDetections = faceapi.resizeResults(detections, displaySize);
+    const landmarks = detections.landmarks;
+    const nose = landmarks.getNose()[3]; // Middle of the nose
 
-      canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-      faceapi.draw.drawDetections(canvas, resizedDetections);
-      faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+    if (initialNoseY === null) {
+      initialNoseY = nose.y;
+      previousNoseX = nose.x;
+      console.log("🎯 Initial Nose Y Set:", initialNoseY.toFixed(2));
+      return;
+    }
 
-      const landmarks = detections.landmarks;
-      const leftEye = landmarks.getLeftEye()[0];
-      const rightEye = landmarks.getRightEye()[0];
+    const movementX = nose.x - previousNoseX;
+    const movementY = nose.y - initialNoseY; // Compare with baseline Y
 
-      // Calculate head tilt angle using atan2
-      const deltaY = rightEye.y - leftEye.y;
-      const deltaX = rightEye.x - leftEye.x;
-      const angle = Math.atan2(deltaY, -deltaX) * (180 / Math.PI);
+    console.log(`📊 MovementX: ${movementX.toFixed(2)}, MovementY: ${movementY.toFixed(2)}`);
 
-      console.log("Head tilt angle:", angle);
-
-      // Ignore small movements (dead zone)
-      if (Math.abs(angle) < deadZone) {
-        return; // Ignore movements within dead zone
+    if (canDetectMovement) {
+      if (Math.abs(movementX) > moveThresholdX) {
+        triggerAction(movementX > 0 ? "right" : "left");
       }
 
-      // Stabilized detection logic
-      if (!hasMoved) {
-        if (angle > movementThreshold && lastMovement !== "right") {
-          console.log("Head tilted RIGHT! Triggering right movement.");
-          triggerAction("right");
-        } else if (angle < -movementThreshold && lastMovement !== "left") {
-          console.log("Head tilted LEFT! Triggering left movement.");
-          triggerAction("left");
+      if (Math.abs(movementY) > moveThresholdY) {
+        if (movementY > deadzoneY) {
+          triggerAction("down");
+        } else if (movementY < -deadzoneY) {
+          triggerAction("up");
         }
       }
     }
-  }, 200); // Reduced checks per second to optimize performance
+
+    previousNoseX = nose.x;
+  }, 200);
 }
 
-// Function to handle triggering movement
-// Function to handle triggering movement
-function triggerAction(direction) {
-  // Only trigger if the opposite direction was not detected recently
-  if (direction === "right") {
-    console.log("Rightward movement detected!");
-    alert("Right movement triggered!");
-    lastMovement = "right";  // Mark right movement
-  } else if (direction === "left") {
-    console.log("Leftward movement detected!");
-    alert("Left movement triggered!");
-    lastMovement = "left";  // Mark left movement
-  }
-  hasMoved = true;
-  setTimeout(() => { hasMoved = false; }, cooldownTime); // Reset hasMoved after cooldown
+// Detect if the page is a PDF
+function isPDF() {
+  return window.location.href.includes(".pdf") || 
+         document.contentType === "application/pdf" || 
+         window.location.href.startsWith("chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/");
 }
+
+// Scroll PDF viewer using keyboard simulation
+function scrollPDF(direction) {
+  console.log(`📜 Scrolling PDF ${direction}`);
+  const event = new KeyboardEvent("keydown", {
+    key: direction === "up" ? "ArrowUp" : "ArrowDown",
+    code: direction === "up" ? "ArrowUp" : "ArrowDown",
+    keyCode: direction === "up" ? 38 : 40,
+    which: direction === "up" ? 38 : 40,
+    bubbles: true,
+    cancelable: true
+  });
+  document.dispatchEvent(event);
+}
+
+// Function to trigger scrolling
+function triggerAction(direction) {
+  console.log(`📜 Moving screen ${direction}!`);
+
+  canDetectMovement = false;
+  setTimeout(() => {
+    canDetectMovement = true;
+  }, cooldownTime);
+
+  if (isPDF()) {
+    scrollPDF(direction);
+    return;
+  }
+
+  const scrollAmount = 500;
+  if (direction === "right") {
+    window.scrollBy({ left: scrollAmount, behavior: "smooth" });
+  } else if (direction === "left") {
+    window.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+  } else if (direction === "up") {
+    window.scrollBy({ top: -scrollAmount, behavior: "smooth" });
+  } else if (direction === "down") {
+    window.scrollBy({ top: scrollAmount, behavior: "smooth" });
+  }
+}
+
 // Load face-api.js when the content script runs
 loadFaceApi();
