@@ -123,12 +123,18 @@ async function detectFaces(video) {
 
         // You can check for movement by comparing this position with the previous one
         if (previousPosition !== null) {
-          const movementThreshold = 10; // Change threshold as needed
+          const movementThreshold = 30; // Adjusted threshold for higher sensitivity
 
           // Right movement detection
           if (centerX > previousPosition + movementThreshold) {
             console.log("Rightward movement detected!");
             alert("Rightward movement detected!");  // Optional visual alert
+          }
+
+          // Left movement detection
+          else if (centerX < previousPosition - movementThreshold) {
+            console.log("Leftward movement detected!");
+            alert("Leftward movement detected!");  // Optional visual alert
           }
         }
 
