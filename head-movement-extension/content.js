@@ -3,14 +3,12 @@ console.log("Content script is running!");
 // Load the face-api.min.js script dynamically
 function loadFaceApi() {
   const script = document.createElement('script');
-  script.src = chrome.runtime.getURL('face_api.min.js'); // Make sure the path is correct
+  script.src = chrome.runtime.getURL('face_api.min.js'); // Ensure correct path
   script.onload = () => {
     console.log("face-api.min.js loaded!");
-
-    // Check if faceapi is now available
     if (window.faceapi) {
       console.log("faceapi is now defined:", window.faceapi);
-      loadModels();  // Now, we can safely load models after the script is loaded
+      loadModels();
     } else {
       console.error("faceapi is still not defined");
     }
@@ -22,12 +20,10 @@ function loadFaceApi() {
   document.head.appendChild(script);
 }
 
-// Load the models using face-api.js with Promise.all
+// Load face-api.js models
 async function loadModels() {
   try {
-    const MODEL_URL = chrome.runtime.getURL('models');  // Path to your models folder
-
-    // Ensure that faceapi is defined
+    const MODEL_URL = chrome.runtime.getURL('models'); // Path to models folder
     if (!window.faceapi) {
       console.error("faceapi is not defined!");
       return;
@@ -35,14 +31,9 @@ async function loadModels() {
 
     console.log("Loading models from:", MODEL_URL);
 
-    // Load models and add logs to check status
     await Promise.all([
-      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL).then(() => {
-        console.log("ssdMobilenetv1 model loaded!");
-      }),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL).then(() => {
-        console.log("faceLandmark68Net model loaded!");
-      })
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
     ]);
 
     console.log("All models loaded successfully!");
@@ -60,22 +51,20 @@ function startVideo() {
       video.style.position = 'fixed';
       video.style.top = '10px';
       video.style.right = '10px';
-      video.style.width = '200px';  // Set width explicitly
-      video.style.height = 'auto';  // Set height to auto to maintain aspect ratio
+      video.style.width = '200px';
+      video.style.height = 'auto';
       video.style.zIndex = '9999';
       video.style.border = '2px solid black';
       video.srcObject = stream;
-      video.autoplay = true;video.style.transform = 'scaleX(-1)';  // Mirror the video horizontally
+      video.autoplay = true;
+      video.style.transform = 'scaleX(-1)';  // Mirror the video horizontally
       video.style.transformOrigin = 'center';  // Keep the video centered after mirroring
-
 
       document.body.appendChild(video);
 
-      // Wait for video metadata to load (including width and height)
       video.onloadedmetadata = () => {
         console.log("Video metadata loaded:", video.videoWidth, video.videoHeight);
 
-        // Ensure video has valid dimensions before calling faceapi functions
         if (video.videoWidth > 0 && video.videoHeight > 0) {
           detectFaces(video);
         } else {
@@ -88,8 +77,12 @@ function startVideo() {
     });
 }
 
-// Detect faces in the video stream and log face detection status
-let previousPosition = null; // Variable to store previous nose position
+// Detect faces and recognize movement
+let lastMovement = null; // Stores last detected movement ("left" or "right")
+let hasMoved = false; // Prevents multiple detections of the same movement
+const movementThreshold = 60; // Degrees required for detection
+const deadZone = 15; // Ignores small movements below this threshold
+const cooldownTime = 1500; // Cooldown (1.5 seconds) before another movement is detected
 
 async function detectFaces(video) {
   const canvas = faceapi.createCanvasFromMedia(video);
@@ -99,52 +92,56 @@ async function detectFaces(video) {
   canvas.style.zIndex = '9999';
   document.body.appendChild(canvas);
 
-  // Ensure canvas size matches the video size after metadata is loaded
   const displaySize = { width: video.videoWidth, height: video.videoHeight };
   faceapi.matchDimensions(canvas, displaySize);
 
   setInterval(async () => {
-    // Ensure canvas and video dimensions are valid before processing
     if (displaySize.width > 0 && displaySize.height > 0) {
-      const detections = await faceapi.detectAllFaces(video).withFaceLandmarks();
+      const detections = await faceapi.detectSingleFace(video).withFaceLandmarks();
+      if (!detections) return; // Skip if no face detected
+
       const resizedDetections = faceapi.resizeResults(detections, displaySize);
 
       canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
       faceapi.draw.drawDetections(canvas, resizedDetections);
       faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
-      // Log number of faces detected
-      console.log("Number of faces detected:", detections.length);
+      const landmarks = detections.landmarks;
+      const leftEye = landmarks.getLeftEye()[0];
+      const rightEye = landmarks.getRightEye()[0];
 
-      if (detections.length > 0) {
-        const landmarks = detections[0].landmarks;
-        const nose = landmarks.getNose();  // Get nose landmark
-        const centerX = nose[3].x;  // Using the x-coordinate of the nose (or any other point)
+      // Calculate head tilt angle using atan2
+      const deltaY = rightEye.y - leftEye.y;
+      const deltaX = rightEye.x - leftEye.x;
+      const angle = Math.atan2(deltaY, -deltaX) * (180 / Math.PI);
 
-        console.log("Current X Position of the nose:", centerX);
+      console.log("Head tilt angle:", angle);
 
-        // You can check for movement by comparing this position with the previous one
-        if (previousPosition !== null) {
-          const movementThreshold = 30; // Adjusted threshold for higher sensitivity
+      // Ignore small movements (dead zone)
+      if (Math.abs(angle) < deadZone) {
+        return; // Ignore movements within dead zone
+      }
 
-          // Right movement detection
-          if (centerX > previousPosition + movementThreshold) {
-            console.log("Rightward movement detected!");
-            alert("Rightward movement detected!");  // Optional visual alert
-          }
-
-          // Left movement detection
-          else if (centerX < previousPosition - movementThreshold) {
-            console.log("Leftward movement detected!");
-            alert("Leftward movement detected!");  // Optional visual alert
-          }
+      // Stabilized detection logic
+      if (!hasMoved) {
+        if (angle > movementThreshold && lastMovement !== "right") {
+          console.log("Head tilted RIGHT! Triggering right movement.");
+          triggerAction("right");
+        } else if (angle < -movementThreshold && lastMovement !== "left") {
+          console.log("Head tilted LEFT! Triggering left movement.");
+          triggerAction("left");
         }
-
-        // Update the previous position
-        previousPosition = centerX;
       }
     }
-  }, 100);
+  }, 200); // Reduced checks per second to optimize performance
+}
+
+// Function to handle triggering movement
+function triggerAction(direction) {
+  alert(direction === "right" ? "Left movement triggered!" : "Right movement triggered!");
+  lastMovement = direction;
+  hasMoved = true;
+  setTimeout(() => { hasMoved = false; }, cooldownTime);
 }
 
 // Load face-api.js when the content script runs

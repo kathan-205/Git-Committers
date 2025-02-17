@@ -3,15 +3,32 @@ let webcamFeed = document.getElementById('webcamFeed');
 let feedback = document.getElementById('feedback');
 let nextButton = document.getElementById('nextButton');
 
-// Start Webcam Stream
-navigator.mediaDevices.getUserMedia({ video: true })
-  .then((stream) => {
+// Function to Request Camera Access
+async function startWebcam() {
+  try {
+    // Request camera permission
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+    // If permission is granted, show the feed
     webcamFeed.srcObject = stream;
-  })
-  .catch((err) => {
-    console.log("Webcam access denied:", err);
-    feedback.textContent = "⚠ Webcam access needed!";
-  });
+    feedback.textContent = "✅ Webcam access granted!";
+  } catch (err) {
+    console.error("❌ Webcam access denied:", err);
+
+    if (err.name === "NotAllowedError") {
+      feedback.textContent = "⚠ Please allow camera access in browser settings!";
+    } else if (err.name === "NotFoundError") {
+      feedback.textContent = "⚠ No camera detected!";
+    } else {
+      feedback.textContent = "⚠ Unable to access the camera!";
+    }
+  }
+}
+
+// Try to start the webcam when the popup opens
+document.addEventListener("DOMContentLoaded", () => {
+  startWebcam();
+});
 
 // Simulated Head Movement Detection
 function detectHeadMovement() {
@@ -22,14 +39,14 @@ function detectHeadMovement() {
     } else {
       feedback.textContent = "";
     }
-  }, 2000); // Check every 2 seconds
+  }, 2000);
 }
 
 detectHeadMovement();
 
 // Next Page Button Click
-nextButton.addEventListener('click', () => {
+nextButton.addEventListener("click", () => {
   console.log("Simulating page flip...");
   feedback.textContent = "📄 Page flipped!";
-  setTimeout(() => feedback.textContent = "", 1500); // Clear after 1.5s
+  setTimeout(() => feedback.textContent = "", 1500);
 });
