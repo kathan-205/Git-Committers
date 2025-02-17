@@ -80,9 +80,10 @@ function startVideo() {
 // Detect faces and recognize movement
 let lastMovement = null; // Stores last detected movement ("left" or "right")
 let hasMoved = false; // Prevents multiple detections of the same movement
-const movementThreshold = 60; // Degrees required for detection
-const deadZone = 15; // Ignores small movements below this threshold
-const cooldownTime = 1500; // Cooldown (1.5 seconds) before another movement is detected
+const movementThreshold = 40; // Degrees required for detection
+const deadZone = 50; // Ignores small movements below this threshold
+const cooldownTime = 2500; // Cooldown (1.5 seconds) before another movement is detected
+const tiltThreshold = 10; // Threshold for head tilting (small value)
 
 async function detectFaces(video) {
   const canvas = faceapi.createCanvasFromMedia(video);
@@ -137,12 +138,20 @@ async function detectFaces(video) {
 }
 
 // Function to handle triggering movement
+// Function to handle triggering movement
 function triggerAction(direction) {
-  alert(direction === "right" ? "Left movement triggered!" : "Right movement triggered!");
-  lastMovement = direction;
+  // Only trigger if the opposite direction was not detected recently
+  if (direction === "right") {
+    console.log("Rightward movement detected!");
+    alert("Right movement triggered!");
+    lastMovement = "right";  // Mark right movement
+  } else if (direction === "left") {
+    console.log("Leftward movement detected!");
+    alert("Left movement triggered!");
+    lastMovement = "left";  // Mark left movement
+  }
   hasMoved = true;
-  setTimeout(() => { hasMoved = false; }, cooldownTime);
+  setTimeout(() => { hasMoved = false; }, cooldownTime); // Reset hasMoved after cooldown
 }
-
 // Load face-api.js when the content script runs
 loadFaceApi();
