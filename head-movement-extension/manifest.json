@@ -3,12 +3,18 @@
   "name": "Webcam Loader",
   "version": "1.0",
   "description": "Loads webcam on any webpage",
-  "permissions": ["activeTab"],
+  "permissions": ["activeTab", "scripting"],
   "host_permissions": ["<all_urls>"],
+  "web_accessible_resources": [
+    {
+      "resources": ["face_api.min.js", "models/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["face_api.min.js","content.js"],
       "run_at": "document_idle"
     }
   ]
