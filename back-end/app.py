@@ -1,6 +1,6 @@
 import json
 import networkx as nx
-from flask import Flask, request, jsonify,render_template
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 

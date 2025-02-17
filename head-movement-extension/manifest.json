@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Webcam Loader",
+  "version": "1.0",
+  "description": "Loads webcam on any webpage",
+  "permissions": ["activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
